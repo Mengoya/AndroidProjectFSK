@@ -11,13 +11,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import kotlin.concurrent.thread
-import kotlin.math.sin
-import kotlin.math.floor
 
 class MainActivity : AppCompatActivity() {
 
     private val freqZero = 17500.0
-    private val freqOne = 18000.0
+    private val freqOne = 17800.0
     private val sampleRate = 44100
     private val bitDurationMs = 100
     private val fadeDurationMs = 75
@@ -25,7 +23,7 @@ class MainActivity : AppCompatActivity() {
     private val dataBitsCount = 8
 
     private val command1Data = listOf(1, 0, 1, 0, 1, 0, 1, 0)
-    private val command2Data = listOf(0, 1, 0, 1, 0, 1, 0, 1)
+    private val command2Data = listOf(0, 0, 0, 1, 0, 1, 0, 1)
 
     @Volatile private var isPlaying = false
 
