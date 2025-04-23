@@ -20,12 +20,12 @@ class MainActivity : AppCompatActivity() {
     private val freqOne = 18000.0
     private val sampleRate = 44100
     private val bitDurationMs = 100
-    private val fadeDurationMs = 75 // Увеличено
+    private val fadeDurationMs = 75
     private val preamble = listOf(1, 0, 1)
-    private val dataBitsCount = 8 // Возвращено 8 бит
+    private val dataBitsCount = 8
 
-    private val command1Data = listOf(1, 0, 1, 0, 1, 0, 1, 0) // 8 бит
-    private val command2Data = listOf(0, 1, 0, 1, 0, 1, 0, 1) // 8 бит
+    private val command1Data = listOf(1, 0, 1, 0, 1, 0, 1, 0)
+    private val command2Data = listOf(0, 1, 0, 1, 0, 1, 0, 1)
 
     @Volatile private var isPlaying = false
 
@@ -70,17 +70,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun generateFSKSound(bits: List<Int>): ShortArray {
         val samplesPerBit = (bitDurationMs / 1000.0 * sampleRate).toInt()
-        val fadeSamples   = (3 /* ms */ / 1000.0 * sampleRate).toInt()
-        val totalSamples  = samplesPerBit * bits.size
-        val buf           = ShortArray(totalSamples)
+        val fadeSamples   = (3 / 1000.0 * sampleRate).toInt()
+        val payload       = samplesPerBit * bits.size
+        val tailSamples   = (0.01 * sampleRate).toInt()        // 10 мс
+        val buf           = ShortArray(payload + tailSamples)
 
         var phase = 0.0
         var idx   = 0
-
         for (bit in bits) {
             val freq      = if (bit == 0) freqZero else freqOne
-            val phaseStep = 2.0 * Math.PI * freq / sampleRate
-
+            val phaseStep = 2 * Math.PI * freq / sampleRate
             for (i in 0 until samplesPerBit) {
                 val env = when {
                     i < fadeSamples ->
@@ -90,11 +89,8 @@ class MainActivity : AppCompatActivity() {
                                 (samplesPerBit - 1 - i) / fadeSamples))
                     else -> 1.0
                 }
-
                 buf[idx++] = (kotlin.math.sin(phase) * env * Short.MAX_VALUE)
-                    .toInt()
-                    .toShort()
-
+                    .toInt().toShort()
                 phase += phaseStep
                 if (phase >= 2 * Math.PI) phase -= 2 * Math.PI
             }
@@ -103,51 +99,40 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playSoundInternal(currentSoundData: ShortArray, bits: List<Int>) {
-        if (isPlaying) {
-            Log.w("AudioDebug", "playSoundInternal called while isPlaying is true.")
-            return
-        }
+        if (isPlaying) return
         isPlaying = true
-
-        val totalDurationMs = bits.size * bitDurationMs
-        val minBufferSize = AudioTrack.getMinBufferSize(
-            sampleRate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT
-        )
-        val bufferSize = maxOf(minBufferSize, currentSoundData.size * 2)
-        var tempAudioTrack: AudioTrack? = null
-
+        var track: AudioTrack? = null
         try {
-            tempAudioTrack = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-                .setAudioFormat(AudioFormat.Builder()
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setSampleRate(sampleRate)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                .setBufferSizeInBytes(bufferSize)
-                .setTransferMode(AudioTrack.MODE_STATIC).build()
+            val bufBytes = currentSoundData.size * 2
+            track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setTransferMode(AudioTrack.MODE_STATIC)
+                .setBufferSizeInBytes(bufBytes)
+                .build()
 
-            val writeResult = tempAudioTrack.write(currentSoundData, 0, currentSoundData.size)
-            if (writeResult != currentSoundData.size) {
-                Log.e("AudioDebug", "Failed write. Wrote $writeResult / ${currentSoundData.size}")
-                throw IllegalStateException("Failed write audio data")
+            track.write(currentSoundData, 0, currentSoundData.size)
+            track.play()
+
+            while (track.playbackHeadPosition < currentSoundData.size) {
+                Thread.sleep(10)
             }
 
-            Log.d("AudioDebug", "Playing FSK sound...")
-            tempAudioTrack.play()
-
-            val sleepTime = (totalDurationMs + fadeDurationMs + 50).toLong()
-            Thread.sleep(sleepTime)
-
-            tempAudioTrack.stop()
-            Log.d("AudioDebug", "FSK Playback finished.")
-
         } catch (e: Exception) {
-            Log.e("AudioDebug", "Error playing FSK sound: ${e.message}", e)
+            Log.e("AudioDebug", "play error: ${e.message}", e)
         } finally {
-            tempAudioTrack?.release()
-            Log.d("AudioDebug", "FSK Track released.")
+            track?.release()
             isPlaying = false
         }
     }
