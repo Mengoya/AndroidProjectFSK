@@ -68,50 +68,38 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun generateFSKSound(bits: List<Int>): ShortArray? {
-        val totalDurationMs = bits.size * bitDurationMs
-        val numSamples = (totalDurationMs / 1000.0 * sampleRate).toInt()
+    private fun generateFSKSound(bits: List<Int>): ShortArray {
         val samplesPerBit = (bitDurationMs / 1000.0 * sampleRate).toInt()
-        val fadeSamples = (fadeDurationMs / 1000.0 * sampleRate).toInt()
+        val fadeSamples   = (3 /* ms */ / 1000.0 * sampleRate).toInt()
+        val totalSamples  = samplesPerBit * bits.size
+        val buf           = ShortArray(totalSamples)
 
-        if (numSamples <= 0 || samplesPerBit <= 0) {
-            Log.e("AudioDebug", "Invalid sample calculation. numSamples=$numSamples, samplesPerBit=$samplesPerBit")
-            return null
-        }
+        var phase = 0.0
+        var idx   = 0
 
-        if (numSamples <= 2 * fadeSamples && fadeSamples > 0) {
-            Log.w("AudioDebug", "Duration ($totalDurationMs ms) too short for fade ($fadeDurationMs ms)! Generating without fade.")
-            val generatedSound = ShortArray(numSamples)
-            for (i in 0 until numSamples) {
-                val bitIndex = floor(i.toDouble() / samplesPerBit).toInt().coerceIn(0, bits.size - 1)
-                val currentBit = bits[bitIndex]
-                val frequency = if (currentBit == 0) freqZero else freqOne
-                val time = i.toDouble() / sampleRate
-                val sampleValue = sin(2.0 * Math.PI * frequency * time)
-                generatedSound[i] = (sampleValue * Short.MAX_VALUE).toInt().toShort()
+        for (bit in bits) {
+            val freq      = if (bit == 0) freqZero else freqOne
+            val phaseStep = 2.0 * Math.PI * freq / sampleRate
+
+            for (i in 0 until samplesPerBit) {
+                val env = when {
+                    i < fadeSamples ->
+                        0.5 * (1 - kotlin.math.cos(Math.PI * i / fadeSamples))
+                    i >= samplesPerBit - fadeSamples ->
+                        0.5 * (1 - kotlin.math.cos(Math.PI *
+                                (samplesPerBit - 1 - i) / fadeSamples))
+                    else -> 1.0
+                }
+
+                buf[idx++] = (kotlin.math.sin(phase) * env * Short.MAX_VALUE)
+                    .toInt()
+                    .toShort()
+
+                phase += phaseStep
+                if (phase >= 2 * Math.PI) phase -= 2 * Math.PI
             }
-            return generatedSound
         }
-
-        val generatedSound = ShortArray(numSamples)
-        for (i in 0 until numSamples) {
-            val bitIndex = floor(i.toDouble() / samplesPerBit).toInt().coerceIn(0, bits.size - 1)
-            val currentBit = bits[bitIndex]
-            val frequency = if (currentBit == 0) freqZero else freqOne
-
-            val time = i.toDouble() / sampleRate
-            val sampleValue = sin(2.0 * Math.PI * frequency * time)
-
-            val envelope: Double = when {
-                i < fadeSamples && fadeSamples > 0 -> i.toDouble() / (fadeSamples -1).coerceAtLeast(1).toDouble()
-                i >= numSamples - fadeSamples && fadeSamples > 0 -> (numSamples - 1 - i).toDouble() / (fadeSamples -1).coerceAtLeast(1).toDouble()
-                else -> 1.0
-            }.coerceIn(0.0, 1.0)
-
-            generatedSound[i] = (sampleValue * envelope * Short.MAX_VALUE).toInt().toShort()
-        }
-        Log.d("AudioDebug", "FSK Sound generated. Bits: ${bits.size}, Samples: $numSamples")
-        return generatedSound
+        return buf
     }
 
     private fun playSoundInternal(currentSoundData: ShortArray, bits: List<Int>) {
