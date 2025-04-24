@@ -19,9 +19,13 @@ class CommandAdapter(
 
     override fun onBindViewHolder(h: VH, pos: Int) = with(h.b) {
         val item = items[pos]
+
         ivIcon.setImageResource(item.iconRes)
         tvTitle.text = item.title
         tvDesc.text  = item.description
-        root.setOnClickListener { click(item) }
+
+        btnSend.setOnClickListener { click(item) }
+
+        root.setOnClickListener  { click(item) }
     }
 }

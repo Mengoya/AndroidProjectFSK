@@ -28,14 +28,12 @@ class HomeFragment : Fragment() {
     private val cmd2Bits = listOf(0,1,0,1,0,1,0,1)      // «Block mouse»
 
     @Volatile private var playing = false
-    /* ------------------------------------------------------ */
 
     override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         _b = FragmentHomeBinding.inflate(i, c, false); return b.root
     }
 
     override fun onViewCreated(v: View, s: Bundle?) {
-        // список команд
         val items = listOf(
             Command("Open browser", "Открывает Firefox",
                 R.drawable.baseline_catching_pokemon_24, preamble + cmd1Bits),
@@ -49,7 +47,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /* ------------------- Аудио код ------------------------ */
     private fun playAsync(bits: List<Int>) {
         if (playing) return
         thread { play(generate(bits)) }
@@ -99,7 +96,6 @@ class HomeFragment : Fragment() {
         } catch (e: Exception){ Log.e("Audio", "err", e) }
         finally { track.release(); playing = false }
     }
-    /* ------------------------------------------------------ */
 
     override fun onDestroyView() { super.onDestroyView(); _b = null }
 }
