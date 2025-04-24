@@ -1,0 +1,14 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/homeFragment"
+        android:icon="@drawable/baseline_home_24"
+        android:title="Дом"/>
+    <item
+        android:id="@+id/touchpadFragment"
+        android:icon="@drawable/baseline_padding_24"
+        android:title="Тачпад"/>
+    <item
+        android:id="@+id/profileFragment"
+        android:icon="@drawable/baseline_manage_accounts_24"
+        android:title="Профиль"/>
+</menu>

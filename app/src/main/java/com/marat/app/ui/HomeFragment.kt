@@ -4,95 +4,102 @@ import android.media.*
 import android.os.*
 import android.util.Log
 import android.view.*
-import android.widget.Button
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.marat.app.R
-import com.marat.app.data.PrefManager
+import com.marat.app.databinding.FragmentHomeBinding
 import kotlin.concurrent.thread
 import kotlin.math.cos
 import kotlin.math.sin
 
-class HomeFragment: Fragment(R.layout.fragment_home) {
+class HomeFragment : Fragment() {
 
-    private val freqZero = 17500.0
-    private val freqOne = 17800.0
-    private val sampleRate = 44100
-    private val bitDurationMs = 100
+    private var _b: FragmentHomeBinding? = null
+    private val b get() = _b!!
+
+    /* ------------ FSK параметры и данные команд ----------- */
+    private val freqZero = 17_500.0
+    private val freqOne  = 17_800.0
+    private val sampleRate = 44_100
+    private val bitMs = 100
+
     private val preamble = listOf(1,0,1)
-    private val command1Data = listOf(1,0,1,0,1,0,1,0)
-    private val command2Data = listOf(0,1,0,1,0,1,0,1)
-    @Volatile private var isPlaying = false
+    private val cmd1Bits = listOf(1,0,1,0,1,0,1,0)      // «Open browser»
+    private val cmd2Bits = listOf(0,1,0,1,0,1,0,1)      // «Block mouse»
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val send1: Button = view.findViewById(R.id.sendButton1)
-        val send2: Button = view.findViewById(R.id.sendButton2)
-        val logout: Button = view.findViewById(R.id.btnLogout)
+    @Volatile private var playing = false
+    /* ------------------------------------------------------ */
 
-        send1.setOnClickListener { playSoundAsync(preamble + command1Data) }
-        send2.setOnClickListener { playSoundAsync(preamble + command2Data) }
+    override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
+        _b = FragmentHomeBinding.inflate(i, c, false); return b.root
+    }
 
-        logout.setOnClickListener {
-            PrefManager(requireContext()).logout()
-            findNavController().navigate(R.id.action_home_to_login)
+    override fun onViewCreated(v: View, s: Bundle?) {
+        // список команд
+        val items = listOf(
+            Command("Open browser", "Открывает Firefox",
+                R.drawable.baseline_catching_pokemon_24, preamble + cmd1Bits),
+            Command("Block mouse",  "Блокирует движение мыши",
+                R.drawable.baseline_mouse_24,  preamble + cmd2Bits)
+        )
+
+        b.recycler.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = CommandAdapter(items) { playAsync(it.bits) }
         }
     }
 
-    private fun playSoundAsync(bits: List<Int>) {
-        if (isPlaying) return
-        thread {
-            val buf = generateFSKSound(bits)
-            playSound(buf)
-        }
+    /* ------------------- Аудио код ------------------------ */
+    private fun playAsync(bits: List<Int>) {
+        if (playing) return
+        thread { play(generate(bits)) }
     }
 
-    private fun generateFSKSound(bits: List<Int>): ShortArray {
-        val samplesPerBit = (bitDurationMs / 1000.0 * sampleRate).toInt()
-        val fadeSamples = (3 / 1000.0 * sampleRate).toInt()
-        val payload = samplesPerBit * bits.size
-        val tail = (0.01 * sampleRate).toInt()
-        val buf = ShortArray(payload + tail)
-        var phase = 0.0
-        var idx = 0
+    private fun generate(bits: List<Int>): ShortArray {
+        val spb = (bitMs / 1000.0 * sampleRate).toInt()
+        val fade = (0.003 * sampleRate).toInt()
+        val buf = ShortArray(spb * bits.size + 1000)
+        var idx = 0; var phase = 0.0
         for (bit in bits) {
-            val freq = if (bit == 0) freqZero else freqOne
-            val step = 2 * Math.PI * freq / sampleRate
-            for (i in 0 until samplesPerBit) {
+            val freq = if (bit==0) freqZero else freqOne
+            val step = 2*Math.PI*freq/sampleRate
+            repeat(spb) { i ->
                 val env = when {
-                    i < fadeSamples -> 0.5 * (1 - cos(Math.PI * i / fadeSamples))
-                    i >= samplesPerBit - fadeSamples -> 0.5 * (1 - cos(Math.PI * (samplesPerBit - 1 - i) / fadeSamples))
+                    i < fade -> 0.5*(1 - cos(Math.PI*i/fade))
+                    i >= spb-fade -> 0.5*(1 - cos(Math.PI*(spb-1-i)/fade))
                     else -> 1.0
                 }
-                buf[idx++] = (sin(phase) * env * Short.MAX_VALUE).toInt().toShort()
+                buf[idx++] = (sin(phase)*env*Short.MAX_VALUE).toInt().toShort()
                 phase += step
-                if (phase >= 2 * Math.PI) phase -= 2 * Math.PI
+                if (phase > 2*Math.PI) phase -= 2*Math.PI
             }
         }
         return buf
     }
 
-    private fun playSound(data: ShortArray) {
-        if (isPlaying) return
-        isPlaying = true
-        var track: AudioTrack? = null
-        try {
-            track = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder()
+    private fun play(data: ShortArray) {
+        playing = true
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(
+                AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-                .setAudioFormat(AudioFormat.Builder()
+            .setAudioFormat(
+                AudioFormat.Builder()
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                     .setSampleRate(sampleRate)
                     .setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .setBufferSizeInBytes(data.size * 2)
-                .build()
+            .setTransferMode(AudioTrack.MODE_STATIC)
+            .setBufferSizeInBytes(data.size*2)
+            .build()
+        try {
             track.write(data,0,data.size)
             track.play()
             while (track.playbackHeadPosition < data.size) Thread.sleep(10)
-        } catch (e: Exception){ Log.e("AudioDebug","error ${e.message}",e) }
-        finally { track?.release(); isPlaying = false }
+        } catch (e: Exception){ Log.e("Audio", "err", e) }
+        finally { track.release(); playing = false }
     }
+    /* ------------------------------------------------------ */
 
-    override fun onStop() { super.onStop(); isPlaying=false }
+    override fun onDestroyView() { super.onDestroyView(); _b = null }
 }

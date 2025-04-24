@@ -11,7 +11,7 @@
         tools:layout="@layout/fragment_login">
         <action
             android:id="@+id/action_login_to_register"
-            app:destination="@id/registerFragment" />
+            app:destination="@id/registerFragment"/>
         <action
             android:id="@+id/action_login_to_home"
             app:destination="@id/homeFragment"
@@ -33,11 +33,15 @@
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.marat.app.ui.HomeFragment"
-        tools:layout="@layout/fragment_home">
-        <action
-            android:id="@+id/action_home_to_login"
-            app:destination="@id/loginFragment"
-            app:popUpTo="@id/homeFragment"
-            app:popUpToInclusive="true"/>
-    </fragment>
+        tools:layout="@layout/fragment_home"/>
+
+    <fragment
+        android:id="@+id/touchpadFragment"
+        android:name="com.marat.app.ui.TouchpadFragment"
+        tools:layout="@layout/fragment_touchpad"/>
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.marat.app.ui.ProfileFragment"
+        tools:layout="@layout/fragment_profile"/>
 </navigation>
