@@ -6,14 +6,15 @@ import androidx.recyclerview.widget.RecyclerView
 import com.marat.app.databinding.ItemCommandBinding
 
 class CommandAdapter(
-    private val items: List<Command>,
-    private val click: (Command) -> Unit
+    private val items: MutableList<Command>,
+    private val onSend:  (Command) -> Unit,
+    private val onLong:  (Int)     -> Unit
 ) : RecyclerView.Adapter<CommandAdapter.VH>() {
 
     inner class VH(val b: ItemCommandBinding) : RecyclerView.ViewHolder(b.root)
 
-    override fun onCreateViewHolder(p: ViewGroup, vType: Int): VH =
-        VH(ItemCommandBinding.inflate(LayoutInflater.from(p.context), p, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
+        VH(ItemCommandBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
     override fun getItemCount() = items.size
 
@@ -24,8 +25,8 @@ class CommandAdapter(
         tvTitle.text = item.title
         tvDesc.text  = item.description
 
-        btnSend.setOnClickListener { click(item) }
-
-        root.setOnClickListener  { click(item) }
+        btnSend.setOnClickListener  { onSend(item) }
+        root.setOnClickListener     { onSend(item) }
+        root.setOnLongClickListener { onLong(pos); true }
     }
 }
