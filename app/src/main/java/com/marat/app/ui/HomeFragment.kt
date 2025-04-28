@@ -26,7 +26,6 @@ class HomeFragment : Fragment() {
     private lateinit var adapter: CommandAdapter
     private val items = mutableListOf<Command>()
 
-    /* ---------------- доступные иконки ---------------- */
     private val iconPool = listOf(
         R.drawable.baseline_public_24,
         R.drawable.baseline_block_24,
@@ -34,15 +33,12 @@ class HomeFragment : Fragment() {
         R.drawable.baseline_catching_pokemon_24,
         R.drawable.baseline_add_24
     )
-    /* -------------------------------------------------- */
 
-    /* ------------- FSK-параметры ---------------------- */
     private val f0 = 17_500.0
     private val f1 = 17_800.0
     private val sr = 44_100
     private val bitMs = 100
     @Volatile private var playing = false
-    /* -------------------------------------------------- */
 
     override fun onCreateView(i: LayoutInflater, c: ViewGroup?, s: Bundle?): View {
         _b = FragmentHomeBinding.inflate(i, c, false); return b.root
@@ -52,14 +48,15 @@ class HomeFragment : Fragment() {
         store     = CommandStore(requireContext())
         username  = PrefManager(requireContext()).getUsername() ?: "guest"
 
-        // базовые 2 команды при первом запуске
         if (store.load(username).isEmpty()) {
             val pre = listOf(1,0,1)
             store.save(username, listOf(
                 Command("Open browser","Открывает Firefox",
                     R.drawable.baseline_public_24,  pre + listOf(1,0,1,0,1,0,1,0)),
                 Command("Block mouse","Блокирует движение мыши",
-                    R.drawable.baseline_block_24,   pre + listOf(0,1,0,1,0,1,0,1))
+                    R.drawable.baseline_block_24,   pre + listOf(0,1,0,1,0,1,0,1)),
+                Command("Unblock mouse","Снимает блокировку мыши",
+                    R.drawable.baseline_mouse_24,   pre + listOf(0,0,1,0,1,0,1,0))
             ))
         }
 
@@ -77,8 +74,6 @@ class HomeFragment : Fragment() {
         b.fabAdd.setOnClickListener { showAddDialog() }
     }
 
-    /* ------------------- диалог «+» ------------------- */
-    /* ------------------- диалог «+» ------------------- */
     private fun showAddDialog() {
         val dlg   = layoutInflater.inflate(R.layout.dialog_add_command, null)
         val spin  = dlg.findViewById<Spinner>(R.id.spIcons)
@@ -86,7 +81,6 @@ class HomeFragment : Fragment() {
         val desc  = dlg.findViewById<EditText>(R.id.etDesc)
         val bits  = dlg.findViewById<EditText>(R.id.etBits)
 
-        // заполнение spinner – как было
         spin.adapter = object : ArrayAdapter<Int>(
             requireContext(), R.layout.spinner_icon_item, iconPool
         ) {
@@ -108,14 +102,14 @@ class HomeFragment : Fragment() {
                     return@setPositiveButton
                 }
 
-                val preamble = listOf(1,0,1)                    // ★ добавили
-                val fullBits = preamble + bitsStr.map { it.digitToInt() }   // ★
+                val preamble = listOf(1,0,1)
+                val fullBits = preamble + bitsStr.map { it.digitToInt() }
 
                 val cmd = Command(
                     title.text.toString(),
                     desc.text.toString(),
                     iconPool[spin.selectedItemPosition],
-                    fullBits                                          // ★
+                    fullBits
                 )
 
                 items.add(cmd)
@@ -125,9 +119,7 @@ class HomeFragment : Fragment() {
             .setNegativeButton("Отмена", null)
             .show()
     }
-    /* -------------------------------------------------- */
 
-    /* ----------------- удаление ----------------------- */
     private fun confirmDelete(index: Int) {
         AlertDialog.Builder(requireContext())
             .setMessage("Удалить «${items[index].title}»?")
@@ -139,9 +131,7 @@ class HomeFragment : Fragment() {
             .setNegativeButton("Отмена", null)
             .show()
     }
-    /* -------------------------------------------------- */
 
-    /* ------ FSK генерация + воспроизведение ----------- */
     private fun playAsync(bits: List<Int>) {
         if (playing) return
         thread { play(generate(bits)) }
@@ -186,7 +176,6 @@ class HomeFragment : Fragment() {
         } catch (e: Exception) { Log.e("Audio", "err", e) }
         finally { track.release(); playing = false }
     }
-    /* -------------------------------------------------- */
 
     override fun onDestroyView() { super.onDestroyView(); _b = null }
 }

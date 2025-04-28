@@ -9,7 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.marat.app.R
 import com.marat.app.data.PrefManager
-import com.marat.app.databinding.FragmentLoginBinding   // viewBinding включите если хотите
+import com.marat.app.databinding.FragmentLoginBinding
 
 class LoginFragment: Fragment() {
     private var _binding: FragmentLoginBinding? = null

@@ -20,13 +20,11 @@ class MainActivity : AppCompatActivity() {
         val bottom = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottom.setupWithNavController(navController)
 
-        // показываем панель только на вкладках-табах
         val tabs = setOf(R.id.homeFragment, R.id.touchpadFragment, R.id.profileFragment)
         navController.addOnDestinationChangedListener { _, d, _ ->
             bottom.visibility = if (d.id in tabs) BottomNavigationView.VISIBLE else BottomNavigationView.GONE
         }
 
-        // сразу на Home, если пользователь уже авторизован
         if (PrefManager(this).isLoggedIn())
             navController.navigate(R.id.homeFragment)
     }
