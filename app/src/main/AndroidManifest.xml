@@ -2,7 +2,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Разрешение на воспроизведение звука (уже есть) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" /> <!-- Убедись, что это разрешение действительно нужно. Для проигрывания звука оно обычно не требуется. Возможно, осталось от старого кода? Если звук только генерируется и проигрывается, RECORD_AUDIO не нужен. -->
+
+    <!-- Разрешение для запуска Foreground Service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Для Android 14 (API 34) и выше может потребоваться указать тип сервиса -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" /> <!-- Или FOREGROUND_SERVICE_MEDIA_PLAYBACK, если подходит -->
+
+
+    <!-- Разрешение на показ уведомлений (для Android 13 - API 33 и выше) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:allowBackup="true"
@@ -13,16 +23,37 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.App"
-        tools:targetApi="31">
+        tools:targetApi="31"> <!-- Можно поднять targetApi до 33 или 34 -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Объявление сервиса -->
+        <service
+            android:name=".MouseBlockService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"> <!-- Укажи подходящий тип. 'specialUse' требует декларации в Play Store. 'mediaPlayback' может быть более подходящим, если звук - основная цель. Если нет подходящего, используй 'dataSync' или 'shortService' если применимо, или 'specialUse' как крайний вариант. -->
+            <!-- Для Android 14+ добавь декларацию использования -->
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Provides persistent status notification for device interaction state." /> <!-- Пример объяснения для specialUse -->
+        </service>
+
+        <!-- Объявление BroadcastReceiver для кнопки уведомления -->
+        <!-- Важно: exported="false", так как мы используем PendingIntent.getBroadcast -->
+        <receiver android:name=".ui.HomeFragment$UnblockReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.marat.app.RECEIVER_ACTION_UNBLOCK"/>
+            </intent-filter>
+        </receiver>
+
+
     </application>
 
 </manifest>
