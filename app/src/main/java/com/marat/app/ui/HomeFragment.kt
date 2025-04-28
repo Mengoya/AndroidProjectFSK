@@ -1,5 +1,6 @@
 package com.marat.app.ui
 
+import android.annotation.SuppressLint
 import android.content.*
 import android.media.*
 import android.os.*
@@ -39,6 +40,7 @@ class HomeFragment : Fragment() {
     }
 
     class UnblockReceiver : BroadcastReceiver() {
+        @SuppressLint("UnsafeImplicitIntentLaunch")
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == RECEIVER_ACTION_UNBLOCK) {
                 Log.d("UnblockReceiver", "Received unblock broadcast from notification")
